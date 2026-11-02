@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CYBER VANGUARD: Protocolo Neón — 2D Action Shooter</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app-container">
+    <!-- MAIN GAME CANVAS -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- CUSTOM RASTER CROSSHAIR FOR MOUSE -->
+    <img id="custom-crosshair" src="assets/crosshair.png" alt="Retícula" draggable="false" />
+
+    <!-- ==================== IN-GAME HUD ==================== -->
+    <div id="hud-layer" class="hidden">
+      <!-- Top Bar -->
+      <div class="hud-top">
+        <!-- Player Vitals (Left) -->
+        <div class="hud-panel vitals-panel">
+          <div class="stat-row">
+            <img src="assets/icon_health.png" alt="Salud" class="hud-icon" draggable="false" />
+            <div class="bar-wrap">
+              <div class="bar-label">
+                <span>BLINDAJE VITAL</span>
+                <span id="hud-hp-text">100 / 100</span>
+              </div>
+              <div class="bar-track hp-track">
+                <div id="hud-hp-bar" class="bar-fill hp-fill" style="width: 100%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-row">
+            <img src="assets/icon_shield.png" alt="Escudo" class="hud-icon" draggable="false" />
+            <div class="bar-wrap">
+              <div class="bar-label">
+                <span>ESCUDO IÓNICO</span>
+                <span id="hud-shield-text">100 / 100</span>
+              </div>
+              <div class="bar-track shield-track">
+                <div id="hud-shield-bar" class="bar-fill shield-fill" style="width: 100%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="credits-row">
+            <div class="credit-badge">
+              <img src="assets/icon_coin.png" alt="Créditos" class="hud-icon-sm" draggable="false" />
+              <span id="hud-credits">0</span>
+              <small>CRÉDITOS</small>
+            </div>
+            <div class="ammo-badge">
+              <img src="assets/icon_ammo.png" alt="Munición" class="hud-icon-sm" draggable="false" />
+              <span id="hud-ammo">36 / 36</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Wave & Score Status (Center) -->
+        <div class="hud-panel center-panel">
+          <div class="wave-row">
+            <div class="metric-chip">
+              <img src="assets/icon_wave.png" alt="Oleada" class="hud-icon-sm" draggable="false" />
+              <div>
+                <small>OLEADA</small>
+                <strong id="hud-wave">1</strong>
+              </div>
+            </div>
+            <div class="metric-chip">
+              <img src="assets/icon_skull.png" alt="Bajas" class="hud-icon-sm" draggable="false" />
+              <div>
+                <small>HOSTILES</small>
+                <strong id="hud-kills">0</strong>
+              </div>
+            </div>
+            <div class="metric-chip score-chip">
+              <img src="assets/icon_coin.png" alt="Puntos" class="hud-icon-sm" draggable="false" />
+              <div>
+                <small>PUNTUACIÓN</small>
+                <strong id="hud-score">0</strong>
+              </div>
+            </div>
+          </div>
+          <div id="combo-banner" class="combo-banner hidden">
+            COMBO <span id="hud-combo">x2</span> — SOBRECARGA ACTIVA
+          </div>
+        </div>
+
+        <!-- Quick Actions (Right) -->
+        <div class="hud-panel actions-panel">
+          <button id="btn-open-shop" class="icon-btn shop-highlight" title="Armería Ciber [Tecla B]">
+            <img src="assets/icon_shop.png" alt="Armería" draggable="false" />
+            <span>ARMERÍA [B]</span>
+          </button>
+          <button id="btn-toggle-sound" class="icon-btn" title="Audio [Tecla M]">
+            <img id="img-sound-icon" src="assets/icon_sound_on.png" alt="Audio" draggable="false" />
+          </button>
+          <button id="btn-fullscreen" class="icon-btn" title="Pantalla Completa [Tecla F]">
+            <img src="assets/icon_fullscreen.png" alt="Pantalla Completa" draggable="false" />
+          </button>
+          <button id="btn-pause" class="icon-btn" title="Pausar [Tecla P / ESC]">
+            <img id="img-pause-icon" src="assets/icon_pause.png" alt="Pausa" draggable="false" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Boss Bar (Appears on Boss Waves) -->
+      <div id="boss-hud" class="boss-hud hidden">
+        <img src="assets/enemy_boss_1.png" alt="Jefe Dreadnought" class="boss-portrait" draggable="false" />
+        <div class="boss-bar-container">
+          <div class="boss-title-row">
+            <span id="boss-name">OVERLORD DREADNOUGHT MK-IX</span>
+            <span id="boss-hp-text">5000 / 5000</span>
+          </div>
+          <div class="bar-track boss-track">
+            <div id="boss-hp-bar" class="bar-fill boss-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wave Announcement Banner -->
+      <div id="wave-announce" class="wave-announce hidden">
+        <img src="assets/icon_wave.png" alt="Alerta" class="announce-icon" draggable="false" />
+        <div>
+          <h2 id="announce-title">OLEADA 1</h2>
+          <p id="announce-sub">ANIQUILA A TODOS LOS HOSTILES</p>
+        </div>
+      </div>
+
+      <!-- Bottom HUD: Weapons Dock (Left) & Active Skills (Right) -->
+      <div class="hud-bottom">
+        <div class="weapons-dock">
+          <button class="weapon-slot active" data-weapon="0">
+            <span class="slot-key">1</span>
+            <img src="assets/icon_weapon_rifle.png" alt="Rifle de Pulso" draggable="false" />
+            <div class="slot-info">
+              <strong>PULSO MK-I</strong>
+              <small id="wslot-0-lvl">NV. 1</small>
+            </div>
+          </button>
+          <button class="weapon-slot locked" data-weapon="1">
+            <span class="slot-key">2</span>
+            <img src="assets/icon_weapon_shotgun.png" alt="Escopeta Iónica" draggable="false" />
+            <div class="slot-info">
+              <strong>ESCOPETA ION</strong>
+              <small id="wslot-1-lvl">BLOQ.</small>
+            </div>
+          </button>
+          <button class="weapon-slot locked" data-weapon="2">
+            <span class="slot-key">3</span>
+            <img src="assets/icon_weapon_minigun.png" alt="Minigun Vacío" draggable="false" />
+            <div class="slot-info">
+              <strong>MINIGUN VACÍO</strong>
+              <small id="wslot-2-lvl">BLOQ.</small>
+            </div>
+          </button>
+          <button class="weapon-slot locked" data-weapon="3">
+            <span class="slot-key">4</span>
+            <img src="assets/icon_weapon_railgun.png" alt="Railgun" draggable="false" />
+            <div class="slot-info">
+              <strong>HIPER RAILGUN</strong>
+              <small id="wslot-3-lvl">BLOQ.</small>
+            </div>
+          </button>
+        </div>
+
+        <div class="skills-dock">
+          <button id="skill-dash" class="skill-btn" title="Propulsor Dash [ESPACIO / SHIFT]">
+            <span class="slot-key">ESPACIO</span>
+            <img src="assets/icon_dash.png" alt="Dash" draggable="false" />
+            <div class="cooldown-overlay" id="cd-dash"></div>
+            <small>DASH</small>
+          </button>
+          <button id="skill-turret" class="skill-btn" title="Desplegar Torreta Centinela [Tecla E]">
+            <span class="slot-key">E</span>
+            <img src="assets/icon_turret.png" alt="Torreta" draggable="false" />
+            <div class="cooldown-overlay" id="cd-turret"></div>
+            <small id="turret-count-label">TORRETA (1)</small>
+          </button>
+          <button id="skill-nuke" class="skill-btn" title="Nova de Plasma EMP [Tecla Q]">
+            <span class="slot-key">Q</span>
+            <img src="assets/icon_nuke.png" alt="Nova EMP" draggable="false" />
+            <div class="cooldown-overlay" id="cd-nuke"></div>
+            <small id="nuke-count-label">NOVA (1)</small>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Touch Twin-Stick Controls -->
+      <div id="touch-controls" class="touch-controls">
+        <div id="joy-left" class="joystick-zone left-zone">
+          <div class="joy-base">
+            <div id="joy-left-knob" class="joy-knob"></div>
+          </div>
+          <span class="joy-caption">MOVER</span>
+        </div>
+        <div id="joy-right" class="joystick-zone right-zone">
+          <div class="joy-base">
+            <div id="joy-right-knob" class="joy-knob"></div>
+          </div>
+          <span class="joy-caption">APUNTAR Y DISPARAR</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MAIN MENU SCREEN ==================== -->
+    <div id="menu-screen" class="overlay-screen">
+      <div class="menu-bg-layer"></div>
+      <div class="menu-content">
+        <div class="menu-header">
+          <img src="assets/logo_emblem.png" alt="Emblema Cyber Vanguard" class="menu-logo-emblem" draggable="false" />
+          <div class="title-block">
+            <span class="cyber-tag">SISTEMA DE COMBATE TÁCTICO 2D // 100% SPRITES ORIGINALES</span>
+            <h1>CYBER VANGUARD</h1>
+            <h2>PROTOCOLO NEÓN</h2>
+          </div>
+        </div>
+
+        <!-- High Score Summary Bar -->
+        <div class="records-strip">
+          <div class="record-item">
+            <img src="assets/icon_coin.png" alt="Récord" draggable="false" />
+            <div>
+              <small>RÉCORD DE PUNTOS</small>
+              <strong id="menu-best-score">0</strong>
+            </div>
+          </div>
+          <div class="record-item">
+            <img src="assets/icon_wave.png" alt="Máxima Oleada" draggable="false" />
+            <div>
+              <small>MÁXIMA OLEADA</small>
+              <strong id="menu-best-wave">1</strong>
+            </div>
+          </div>
+          <div class="record-item">
+            <img src="assets/icon_skull.png" alt="Bajas Totales" draggable="false" />
+            <div>
+              <small>HOSTILES ELIMINADOS</small>
+              <strong id="menu-total-kills">0</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Difficulty Selector -->
+        <div class="difficulty-section">
+          <h3>SELECCIONA NIVEL DE AMENAZA</h3>
+          <div class="difficulty-grid">
+            <button class="diff-card" data-diff="0">
+              <img src="assets/icon_shield.png" alt="Recluta" draggable="false" />
+              <strong>CADETE ESPACIAL</strong>
+              <span>Escudos reforzados y botín frecuente. Ideal para explorar el arsenal.</span>
+            </button>
+            <button class="diff-card active" data-diff="1">
+              <img src="assets/icon_weapon_rifle.png" alt="Veterano" draggable="false" />
+              <strong>COMANDO VANGUARDIA</strong>
+              <span>Equilibrio táctico intenso. Hordas agresivas y recompensas x1.5.</span>
+            </button>
+            <button class="diff-card" data-diff="2">
+              <img src="assets/icon_skull.png" alt="Pesadilla" draggable="false" />
+              <strong>PROTOCOLO ANIQUILACIÓN</strong>
+              <span>Enjambres masivos, mechs de élite y jefes letales. Puntuación x2.5.</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Arsenal & Bestiary Preview -->
+        <div class="showcase-grid">
+          <div class="showcase-card">
+            <h4>ARSENAL DE PLASMA</h4>
+            <div class="sprite-strip">
+              <div class="sprite-pill">
+                <img src="assets/icon_weapon_rifle.png" alt="Rifle" draggable="false" />
+                <span>Pulso MK-I</span>
+              </div>
+              <div class="sprite-pill">
+                <img src="assets/icon_weapon_shotgun.png" alt="Escopeta" draggable="false" />
+                <span>Escopeta Ion</span>
+              </div>
+              <div class="sprite-pill">
+                <img src="assets/icon_weapon_minigun.png" alt="Minigun" draggable="false" />
+                <span>Minigun Vacío</span>
+              </div>
+              <div class="sprite-pill">
+                <img src="assets/icon_weapon_railgun.png" alt="Railgun" draggable="false" />
+                <span>Hiper Railgun</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="showcase-card">
+            <h4>AMENAZAS BIOMECÁNICAS</h4>
+            <div class="sprite-strip">
+              <div class="sprite-pill">
+                <img src="assets/enemy_grunt_1.png" alt="Araña" draggable="false" />
+                <span>Araña Ciber</span>
+              </div>
+              <div class="sprite-pill">
+                <img src="assets/enemy_drone_1.png" alt="Dron" draggable="false" />
+                <span>Dron Rotor</span>
+              </div>
+              <div class="sprite-pill">
+                <img src="assets/enemy_gunner_1.png" alt="Artillero" draggable="false" />
+                <span>Artillero Ion</span>
+              </div>
+              <div class="sprite-pill">
+                <img src="assets/enemy_tank_1.png" alt="Goliath" draggable="false" />
+                <span>Goliath Mech</span>
+              </div>
+              <div class="sprite-pill">
+                <img src="assets/enemy_boss_1.png" alt="Dreadnought" draggable="false" />
+                <span>Dreadnought</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-cta-row">
+          <button id="btn-start-game" class="primary-cyber-btn">
+            <img src="assets/icon_play.png" alt="Jugar" draggable="false" />
+            <span>DESPLEGAR EN LA ARENA</span>
+          </button>
+        </div>
+
+        <div class="controls-footer">
+          <span><strong>WASD / Flechas:</strong> Moverse</span>
+          <span><strong>Ratón / Click Izq:</strong> Apuntar y Disparar</span>
+          <span><strong>1-4:</strong> Armas</span>
+          <span><strong>R:</strong> Recargar</span>
+          <span><strong>ESPACIO:</strong> Propulsor Dash</span>
+          <span><strong>E:</strong> Torreta</span>
+          <span><strong>Q:</strong> Nova EMP</span>
+          <span><strong>B:</strong> Armería</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== ARMORY SHOP MODAL ==================== -->
+    <div id="shop-modal" class="overlay-screen modal-backdrop hidden">
+      <div class="cyber-modal shop-box">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <img src="assets/icon_shop.png" alt="Armería" class="modal-header-icon" draggable="false" />
+            <div>
+              <h2>ARMERÍA TÁCTICA VANGUARDIA</h2>
+              <p>Mejora tu equipamiento y desbloquea armamento pesado con tus Créditos Ciber</p>
+            </div>
+          </div>
+          <div class="shop-balance">
+            <img src="assets/icon_coin.png" alt="Créditos" draggable="false" />
+            <span id="shop-credits-val">0</span>
+            <small>CRÉDITOS</small>
+          </div>
+        </div>
+
+        <div id="shop-items-grid" class="shop-grid">
+          <!-- Populated dynamically by game.js -->
+        </div>
+
+        <div class="modal-footer">
+          <button id="btn-close-shop" class="primary-cyber-btn">
+            <img src="assets/icon_play.png" alt="Continuar" draggable="false" />
+            <span>VOLVER AL COMBATE</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PAUSE MODAL ==================== -->
+    <div id="pause-modal" class="overlay-screen modal-backdrop hidden">
+      <div class="cyber-modal pause-box">
+        <img src="assets/icon_pause.png" alt="Pausa" class="modal-big-icon" draggable="false" />
+        <h2>TRANSMISIÓN EN PAUSA</h2>
+        <p>El sector orbital aguarda tus órdenes, Comandante.</p>
+        <div class="modal-btn-stack">
+          <button id="btn-resume" class="primary-cyber-btn">
+            <img src="assets/icon_play.png" alt="Continuar" draggable="false" />
+            <span>REANUDAR MISIÓN</span>
+          </button>
+          <button id="btn-pause-shop" class="secondary-cyber-btn">
+            <img src="assets/icon_shop.png" alt="Armería" draggable="false" />
+            <span>ABRIR ARMERÍA</span>
+          </button>
+          <button id="btn-quit-menu" class="danger-cyber-btn">
+            <img src="assets/icon_skull.png" alt="Salir" draggable="false" />
+            <span>ABORTAR AL MENÚ PRINCIPAL</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== GAME OVER MODAL ==================== -->
+    <div id="gameover-modal" class="overlay-screen modal-backdrop hidden">
+      <div class="cyber-modal gameover-box">
+        <img src="assets/icon_skull.png" alt="Caído en combate" class="modal-big-icon" draggable="false" />
+        <h2>SEÑAL VITAL PERDIDA</h2>
+        <p id="gameover-subtitle">Has caído defendiendo la estación orbital.</p>
+
+        <div class="summary-stats-grid">
+          <div class="sum-card">
+            <img src="assets/icon_coin.png" alt="Puntos" draggable="false" />
+            <small>PUNTUACIÓN FINAL</small>
+            <strong id="go-score">0</strong>
+          </div>
+          <div class="sum-card">
+            <img src="assets/icon_wave.png" alt="Oleadas" draggable="false" />
+            <small>OLEADA ALCANZADA</small>
+            <strong id="go-wave">1</strong>
+          </div>
+          <div class="sum-card">
+            <img src="assets/icon_skull.png" alt="Bajas" draggable="false" />
+            <small>HOSTILES ELIMINADOS</small>
+            <strong id="go-kills">0</strong>
+          </div>
+        </div>
+
+        <div class="modal-btn-stack">
+          <button id="btn-retry" class="primary-cyber-btn">
+            <img src="assets/icon_play.png" alt="Reintentar" draggable="false" />
+            <span>REINICIAR OPERACIÓN</span>
+          </button>
+          <button id="btn-gameover-menu" class="secondary-cyber-btn">
+            <img src="assets/icon_shield.png" alt="Menú" draggable="false" />
+            <span>VOLVER AL CENTRO DE MANDO</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
